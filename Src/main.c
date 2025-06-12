@@ -98,10 +98,10 @@
  */
 
 // Input duty cycle (1000-2000) = (0deg-180deg)
-//void adjust_servo(uint16_t us) {
-//	// TODO Add range checking (ensure between 1000-2000)
-//	TIM1_CCR1 = us;
-//}
+void adjust_servo(uint16_t us) {
+	// TODO Add range checking (ensure between 1000-2000)
+	TIM1_CCR1 = us;
+}
 
 int main(void)
 {
@@ -146,26 +146,26 @@ int main(void)
 	// Start timer
 	TIM1_CR1 |= (1 << 0);	// CEN = 1
 
-
+	adjust_servo(2000);
 	while (1) {
 	    adjust_servo(1000); // 0 degrees
 	    for (volatile int i = 0; i < 1000000; ++i);
 	    adjust_servo(2000); // 180 degrees
 	    for (volatile int i = 0; i < 1000000; ++i);
 
-	        // 1) Enable GPIOA clock
-	        RCC_AHB1ENR |= (1<<0);
+		// 1) Enable GPIOA clock
+		RCC_AHB1ENR |= (1<<0);
 
-	        // 2) Configure PA5 (LD2) as push-pull output
-	        GPIOA_MODER = (GPIOA_MODER & ~(3U << (5*2))) | (1U << (5*2));
-	            GPIOA_ODR |=  (1<<5);        // LD2 on
-	            for (volatile int i = 0; i < 500000; i++);
-	            GPIOA_ODR &= ~(1<<5);        // LD2 off
-	            for (volatile int i = 0; i < 200000; i++);
-	            GPIOA_ODR |=  (1<<5);        // LD2 on twice quickly
-	            for (volatile int i = 0; i < 500000; i++);
-	            GPIOA_ODR &= ~(1<<5);        // LD2 off
-	            for (volatile int i = 0; i < 2000000; i++);
+		// 2) Configure PA5 (LD2) as push-pull output
+		GPIOA_MODER = (GPIOA_MODER & ~(3U << (5*2))) | (1U << (5*2));
+		GPIOA_ODR |=  (1<<5);        // LD2 on
+		for (volatile int i = 0; i < 500000; i++);
+		GPIOA_ODR &= ~(1<<5);        // LD2 off
+		for (volatile int i = 0; i < 200000; i++);
+		GPIOA_ODR |=  (1<<5);        // LD2 on twice quickly
+		for (volatile int i = 0; i < 500000; i++);
+		GPIOA_ODR &= ~(1<<5);        // LD2 off
+		for (volatile int i = 0; i < 2000000; i++);
 	}
 
 }
