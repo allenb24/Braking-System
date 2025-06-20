@@ -15,8 +15,11 @@
  *
  ******************************************************************************
  */
-
+#include "stm32f4xx.h"
+#include "stepper.h"
+#include "delay.h"
 #include <stdint.h>
+
 
 #if !defined(__SOFT_FP__) && defined(__ARM_FP)
   #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
@@ -103,69 +106,82 @@ void adjust_servo(uint16_t us) {
 	TIM1_CCR1 = us;
 }
 
-int main(void)
-{
-	// Enable clocks
-	RCC_AHB1ENR |= GPIOAEN;	// Enable GPIOA
-	RCC_APB2ENR |= TIM1EN;	// Enable TIM1
+int main(void) {
+    // Initialize delay system and stepper motor driver
+    tim2_init();
+    stepper_init();
 
-	// Configure PA7 as alternate function (PWM = 10)
-	GPIOA_MODER &= ~(3U << 16);	// Clear bits 16 and 17 (PA8)
-	GPIOA_MODER |= (2U << 16);	// Set bits as 10
+    while (1) {
+    	stepper_step(512, 1, 1);
+    }
 
-	// Enable PA8 as an alternate function low register (bits[31:28])
-	// AF1: TIM1_CH1 = 0001
-	GPIOA_AFRH &= ~(0xF << 0);	// Clear AFRH
-	GPIOA_AFRH |= (0x1 << 0);	// Set AFRH as TIM1_CH1 (0001)
+    return 0;
 
-	/*
-	 * TIM1 setup for PWM
-	 * NOTE: SG90 Data Sheet: PW = 20ms (50Hz), duty cycle 1-2ms (1.5ms being neutral)
-	 */
-	// 84 MHz system clock
-	TIM1_PSC = 84 - 1; 	// 84MHz / 84 = 1 MHz	(Subtract 1 because starting at 0)
-	TIM1_ARR = 20000 - 1;	// PWM Period = 20ms (50Hz)
-	TIM1_CCR1 = 1500;	// Set duty cycle
-
-	// PWM Mode 1: Output Compare 1 Mode (OC1M), Output Compare 1 Preload Enable (OC1PE).
-	// Set bits[6:4] = 110; bits[3] = 1;
-	TIM1_CCMR1 |= (6 << 4);
-	TIM1_CCMR1 |= (1 << 3);	// Set bits
-
-	// Enable CH1 output (PA8)
-	TIM1_CCER |= (1 << 0);	// Capture/compare 1 output enable
-
-	TIM1_BDTR |= (1 << 15); // MOE = 1
-
-	TIM1_CR1 |= (1 << 7);	/* ARPE: preload ARR (Auto reload register); buffers register
-							 * This ensures the current cycle completes cleanly before moving on to the next value by...
-							 * preventing the new value to take effect immediately, potentially causing timer resets mid-period.
-							 * Basically, this keeps the period of the PWM stable
-							*/
-
-	// Start timer
-	TIM1_CR1 |= (1 << 0);	// CEN = 1
-
-	adjust_servo(2000);
-	while (1) {
-	    adjust_servo(1000); // 0 degrees
-	    for (volatile int i = 0; i < 1000000; ++i);
-	    adjust_servo(2000); // 180 degrees
-	    for (volatile int i = 0; i < 1000000; ++i);
-
-		// 1) Enable GPIOA clock
-		RCC_AHB1ENR |= (1<<0);
-
-		// 2) Configure PA5 (LD2) as push-pull output
-		GPIOA_MODER = (GPIOA_MODER & ~(3U << (5*2))) | (1U << (5*2));
-		GPIOA_ODR |=  (1<<5);        // LD2 on
-		for (volatile int i = 0; i < 500000; i++);
-		GPIOA_ODR &= ~(1<<5);        // LD2 off
-		for (volatile int i = 0; i < 200000; i++);
-		GPIOA_ODR |=  (1<<5);        // LD2 on twice quickly
-		for (volatile int i = 0; i < 500000; i++);
-		GPIOA_ODR &= ~(1<<5);        // LD2 off
-		for (volatile int i = 0; i < 2000000; i++);
-	}
+//	//////////////////////////////////////////	SERVO CODE ////////////////////////////////////////////////////////
+//
+//
+//	// Enable clocks
+//	RCC_AHB1ENR |= GPIOAEN;	// Enable GPIOA
+//	RCC_APB2ENR |= TIM1EN;	// Enable TIM1
+//
+//	// Configure PA7 as alternate function (PWM = 10)
+//	GPIOA_MODER &= ~(3U << 16);	// Clear bits 16 and 17 (PA8)
+//	GPIOA_MODER |= (2U << 16);	// Set bits as 10
+//
+//	// Enable PA8 as an alternate function low register (bits[31:28])
+//	// AF1: TIM1_CH1 = 0001
+//	GPIOA_AFRH &= ~(0xF << 0);	// Clear AFRH
+//	GPIOA_AFRH |= (0x1 << 0);	// Set AFRH as TIM1_CH1 (0001)
+//
+//	/*
+//	 * TIM1 setup for PWM
+//	 * NOTE: SG90 Data Sheet: PW = 20ms (50Hz), duty cycle 1-2ms (1.5ms being neutral)
+//	 */
+//	// 84 MHz system clock
+//	TIM1_PSC = 84 - 1; 	// 84MHz / 84 = 1 MHz	(Subtract 1 because starting at 0)
+//	TIM1_ARR = 20000 - 1;	// PWM Period = 20ms (50Hz)
+//	TIM1_CCR1 = 1500;	// Set duty cycle
+//
+//	// PWM Mode 1: Output Compare 1 Mode (OC1M), Output Compare 1 Preload Enable (OC1PE).
+//	// Set bits[6:4] = 110; bits[3] = 1;
+//	TIM1_CCMR1 |= (6 << 4);
+//	TIM1_CCMR1 |= (1 << 3);	// Set bits
+//
+//	// Enable CH1 output (PA8/D7)
+//	TIM1_CCER |= (1 << 0);	// Capture/compare 1 output enable
+//
+//	TIM1_BDTR |= (1 << 15); // MOE = 1
+//
+//	TIM1_CR1 |= (1 << 7);	/* ARPE: preload ARR (Auto reload register); buffers register
+//							 * This ensures the current cycle completes cleanly before moving on to the next value by...
+//							 * preventing the new value to take effect immediately, potentially causing timer resets mid-period.
+//							 * Basically, this keeps the period of the PWM stable
+//							*/
+//
+//	// Start timer
+//	TIM1_CR1 |= (1 << 0);	// CEN = 1
+//
+////	adjust_servo(1500);
+//	TIM1_CCR1 = 1000;	// Set duty cycle
+//	while (1) {
+//	    adjust_servo(1000); // 0 degrees
+//	    for (volatile int i = 0; i < 1000000; ++i);
+//	    adjust_servo(2000); // 180 degrees
+//	    for (volatile int i = 0; i < 1000000; ++i);
+//
+//		// 1) Enable GPIOA clock
+//		RCC_AHB1ENR |= (1<<0);
+//
+//		// 2) Configure PA5 (LD2) as push-pull output
+//		GPIOA_MODER = (GPIOA_MODER & ~(3U << (5*2))) | (1U << (5*2));
+//		GPIOA_ODR |=  (1<<5);        // LD2 on
+//		for (volatile int i = 0; i < 500000; i++);
+//		GPIOA_ODR &= ~(1<<5);        // LD2 off
+//		for (volatile int i = 0; i < 200000; i++);
+//		GPIOA_ODR |=  (1<<5);        // LD2 on twice quickly
+//		for (volatile int i = 0; i < 500000; i++);
+//		GPIOA_ODR &= ~(1<<5);        // LD2 off
+//		for (volatile int i = 0; i < 2000000; i++);
+//	}
 
 }
