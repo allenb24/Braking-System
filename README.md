@@ -1,2 +1,11 @@
 # Braking-System (Early stage of project)
-Braking system that includes a servo for the brakes and DC motor for the wheels. Utilizing bare-metal C programming and CMSIS library for the STM32 NUCLEO-F411RE development board. 
+Braking system utilizing bare-metal C programming and CMSIS library for the STM32 NUCLEO-F411RE development board. 
+Components being used include:
+- DC motor
+- Servo motor
+- Stepper motor
+- DC driver board
+- Stepper driver board
+- Ultrasonic sensor
+- LCD Display
+- Multiple power supplies
