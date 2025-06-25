@@ -42,19 +42,26 @@ int measure_echo_pulse(void) {
 
 	// Wait for rising edge
 	while ( !(GPIOA->IDR & (1 << ECHO_PIN_INPUT) ) && --timeout_rising_edge ) {}
+	if (timeout_rising_edge == 0) 	{ return 0; }
 
 	TIM5->CNT = 0;										// Reset counter
 	TIM5->CR1 |= TIM_CR1_CEN;							// Enable timer
-	while ( GPIOA->IDR &  (1 << ECHO_PIN_INPUT) && --timeout_falling_edge) 	{}	// Wait for falling edge
+
+	// Wait for falling edge
+	while ( GPIOA->IDR &  (1 << ECHO_PIN_INPUT) && --timeout_falling_edge) 	{}
 	TIM5->CR1 &= ~(TIM_CR1_CEN);						// Disable timer
+
+	if (timeout_rising_edge == 0)	{ return 0; }
 
 	return TIM5->CNT;
 }
 
 int ultrasonic_get_distance_cm(int duration_us) {
+	if (duration_us == 0 || duration_us > 25000) return -1;  // Too far or timeout
 	return duration_us / 58;
 }
 
 int ultrasonic_get_distance_in(int duration_us) {
+	if (duration_us == 0 || duration_us > 25000) return -1;  // Too far or timeout
 	return duration_us / 148;
 }
